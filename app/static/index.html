@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Job AI</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Agentic Job Fit Copilot</p>
+            <h1>Job AI</h1>
+          </div>
+          <div class="status-pill" id="sessionPill">No session</div>
+        </header>
+
+        <section class="input-grid">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Candidate</p>
+                <h2>Resume</h2>
+              </div>
+              <label class="file-button">
+                <input id="resumeFile" type="file" accept="application/pdf" />
+                Upload PDF
+              </label>
+            </div>
+            <textarea
+              id="resumeText"
+              spellcheck="false"
+              placeholder="Paste resume text here, or upload a PDF resume."
+            ></textarea>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Role</p>
+                <h2>Job Description</h2>
+              </div>
+              <button class="ghost-button" id="sampleButton" type="button">Sample</button>
+            </div>
+            <textarea
+              id="jobText"
+              spellcheck="false"
+              placeholder="Paste the job description here."
+            ></textarea>
+          </div>
+        </section>
+
+        <section class="action-row">
+          <button class="primary-button" id="analyzeButton" type="button">
+            Analyze Fit
+          </button>
+          <p id="statusText">Ready to analyze a resume against a job description.</p>
+        </section>
+
+        <section class="results-layout" id="resultsLayout" hidden>
+          <aside class="score-panel">
+            <p class="panel-kicker">Fit Score</p>
+            <div class="score-ring">
+              <span id="scoreValue">--</span>
+              <small>/100</small>
+            </div>
+            <div class="verdict" id="verdictText">Waiting</div>
+            <div class="breakdown" id="breakdownList"></div>
+          </aside>
+
+          <section class="report-panel">
+            <div class="tabs">
+              <button class="tab active" data-tab="report" type="button">Report</button>
+              <button class="tab" data-tab="matches" type="button">Evidence</button>
+              <button class="tab" data-tab="chat" type="button">Follow-up</button>
+            </div>
+
+            <div class="tab-panel active" id="reportTab">
+              <article class="markdown-report" id="reportContent"></article>
+            </div>
+
+            <div class="tab-panel" id="matchesTab">
+              <div class="evidence-grid">
+                <div>
+                  <h3>Matched Required Skills</h3>
+                  <ul id="matchedRequired"></ul>
+                </div>
+                <div>
+                  <h3>Missing Required Skills</h3>
+                  <ul id="missingRequired"></ul>
+                </div>
+                <div>
+                  <h3>Matched Preferred Skills</h3>
+                  <ul id="matchedPreferred"></ul>
+                </div>
+                <div>
+                  <h3>Missing Preferred Skills</h3>
+                  <ul id="missingPreferred"></ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-panel" id="chatTab">
+              <div class="chat-log" id="chatLog"></div>
+              <form class="chat-form" id="chatForm">
+                <input
+                  id="chatInput"
+                  type="text"
+                  placeholder="Ask how to improve this fit..."
+                  autocomplete="off"
+                />
+                <button type="submit">Ask</button>
+              </form>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

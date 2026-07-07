@@ -1,0 +1,1 @@
+"""Job AI application package."""

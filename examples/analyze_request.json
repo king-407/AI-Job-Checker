@@ -1,0 +1,5 @@
+{
+  "resume_text": "Shivam Tiwari is a junior AI/backend developer with experience building Python, FastAPI, and OpenAI Agents SDK projects. Projects include a sales email generator, a research report agent, and Gemini-powered agent workflows. Skills include Python, FastAPI, REST APIs, Pydantic, LLMs, prompt engineering, Git, and basic React. Education includes a computer science background. He has built tools that parse inputs, call LLMs, and generate structured outputs.",
+  "job_description": "We are hiring an AI Engineer Intern to build LLM-powered tools and backend APIs. Required skills: Python, FastAPI, LLMs, prompt engineering, REST APIs, Git. Preferred skills: RAG, vector databases, LangChain, cloud deployment, React. Responsibilities include building AI agents, creating APIs, integrating model outputs into user-facing workflows, and improving evaluation quality. This is an intern or junior role.",
+  "session_id": null
+}
