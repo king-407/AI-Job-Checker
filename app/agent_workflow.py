@@ -47,7 +47,7 @@ def build_model():
             api_key=google_api_key,
         )
         return OpenAIChatCompletionsModel(
-            model=os.getenv("GEMINI_MODEL_NAME", "gemini-2.5-flash-lite"),
+            model=os.getenv("GEMINI_MODEL_NAME", "gemini-3.1-flash-lite"),
             openai_client=gemini_client,
         )
 
@@ -137,7 +137,10 @@ follow_up_agent = Agent(
     name="Follow-up Coach Agent",
     instructions=(
         "Answer follow-up questions using the current session's resume, job description, score, "
-        "and report context. Be specific and practical."
+        "and report context. Be specific and practical. Format every answer as readable Markdown. "
+        "Put headings on their own lines with a blank line before and after them. Put each bullet "
+        "or numbered-list item on its own line. Never return the whole answer as one continuous "
+        "paragraph."
     ),
     model=MODEL,
 )

@@ -393,6 +393,44 @@ input::placeholder {
   color: var(--ink);
 }
 
+.message.assistant > :first-child {
+  margin-top: 0;
+}
+
+.message.assistant > :last-child {
+  margin-bottom: 0;
+}
+
+.message.assistant h1,
+.message.assistant h2,
+.message.assistant h3 {
+  margin: 18px 0 8px;
+  line-height: 1.25;
+}
+
+.message.assistant h1 {
+  font-size: 1.2rem;
+}
+
+.message.assistant h2 {
+  font-size: 1.1rem;
+}
+
+.message.assistant h3 {
+  font-size: 1rem;
+}
+
+.message.assistant p,
+.message.assistant ul,
+.message.assistant ol {
+  margin: 8px 0;
+}
+
+.message.assistant ul,
+.message.assistant ol {
+  padding-left: 22px;
+}
+
 .chat-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 110px;

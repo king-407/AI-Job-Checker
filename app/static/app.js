@@ -63,49 +63,56 @@ function escapeHtml(value) {
 function renderMarkdown(markdown) {
   const lines = escapeHtml(markdown).split("\n");
   let html = "";
-  let inList = false;
+  let listType = null;
+
+  const inlineMarkdown = (value) =>
+    value.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+
+  const closeList = () => {
+    if (listType) {
+      html += `</${listType}>`;
+      listType = null;
+    }
+  };
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
 
     if (!line) {
-      if (inList) {
-        html += "</ul>";
-        inList = false;
-      }
+      closeList();
       continue;
     }
 
     if (line.startsWith("# ")) {
-      if (inList) {
-        html += "</ul>";
-        inList = false;
-      }
-      html += `<h1>${line.slice(2)}</h1>`;
+      closeList();
+      html += `<h1>${inlineMarkdown(line.slice(2))}</h1>`;
     } else if (line.startsWith("## ")) {
-      if (inList) {
-        html += "</ul>";
-        inList = false;
-      }
-      html += `<h2>${line.slice(3)}</h2>`;
-    } else if (line.startsWith("- ")) {
-      if (!inList) {
+      closeList();
+      html += `<h2>${inlineMarkdown(line.slice(3))}</h2>`;
+    } else if (line.startsWith("### ")) {
+      closeList();
+      html += `<h3>${inlineMarkdown(line.slice(4))}</h3>`;
+    } else if (/^[-*]\s+/.test(line)) {
+      if (listType !== "ul") {
+        closeList();
         html += "<ul>";
-        inList = true;
+        listType = "ul";
       }
-      html += `<li>${line.slice(2)}</li>`;
+      html += `<li>${inlineMarkdown(line.replace(/^[-*]\s+/, ""))}</li>`;
+    } else if (/^\d+\.\s+/.test(line)) {
+      if (listType !== "ol") {
+        closeList();
+        html += "<ol>";
+        listType = "ol";
+      }
+      html += `<li>${inlineMarkdown(line.replace(/^\d+\.\s+/, ""))}</li>`;
     } else {
-      if (inList) {
-        html += "</ul>";
-        inList = false;
-      }
-      html += `<p>${line}</p>`;
+      closeList();
+      html += `<p>${inlineMarkdown(line)}</p>`;
     }
   }
 
-  if (inList) {
-    html += "</ul>";
-  }
+  closeList();
 
   return html;
 }
@@ -230,7 +237,11 @@ async function uploadResumePdf(file) {
 function addMessage(role, content) {
   const message = document.createElement("div");
   message.className = `message ${role}`;
-  message.textContent = content;
+  if (role === "assistant") {
+    message.innerHTML = renderMarkdown(content);
+  } else {
+    message.textContent = content;
+  }
   els.chatLog.appendChild(message);
   els.chatLog.scrollTop = els.chatLog.scrollHeight;
 }
