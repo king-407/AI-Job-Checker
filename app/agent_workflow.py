@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import uuid
 from dataclasses import dataclass, field
+from datetime import date
+from pathlib import Path
 
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
@@ -59,6 +62,8 @@ if tracing_key and set_tracing_export_api_key:
     set_tracing_export_api_key(tracing_key)
 
 MODEL = build_model()
+today = date.today()
+CURRENT_DATE_TEXT = f"{today:%B} {today.day}, {today.year}"
 
 
 @function_tool
@@ -80,7 +85,14 @@ resume_parser_agent = Agent(
     instructions=(
         "Extract the candidate profile from the resume text. "
         "Be factual. Do not invent skills, projects, companies, or degrees. "
-        "If something is unclear, add it to concerns."
+        "For years_of_experience, estimate total professional experience in years from explicit "
+        "work dates or a direct total-experience statement in the resume. Include internships "
+        "only when they are professional software, engineering, data, AI, or technical roles. "
+        f"Use today's date, {CURRENT_DATE_TEXT}, for roles marked Present, Current, or Now. Avoid "
+        "double-counting overlapping roles when possible. Return a decimal number such as 1.5 "
+        "when the estimate is clear. If work dates or total experience are missing or too unclear, "
+        "set years_of_experience to null and add a concern explaining that the experience duration "
+        "cannot be verified. If something is unclear, add it to concerns."
     ),
     model=MODEL,
     output_type=ResumeProfile,
@@ -159,26 +171,105 @@ class SessionState:
 
 
 class SessionStore:
-    def __init__(self) -> None:
+    def __init__(self, db_path: str | Path) -> None:
         self._sessions: dict[str, SessionState] = {}
+        self._db_path = Path(db_path)
+        self._initialize_database()
+
+    def _initialize_database(self) -> None:
+        with sqlite3.connect(self._db_path) as connection:
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS job_ai_session_state (
+                    session_id TEXT PRIMARY KEY,
+                    state_json TEXT NOT NULL
+                )
+                """
+            )
+
+    def _sdk_session(self, session_id: str) -> object | None:
+        if not SQLiteSession:
+            return None
+        return SQLiteSession(session_id, db_path=self._db_path)
 
     def create(self) -> SessionState:
         session_id = str(uuid.uuid4())
-        sdk_session = SQLiteSession(session_id) if SQLiteSession else None
-        state = SessionState(session_id=session_id, sdk_session=sdk_session)
+        state = SessionState(
+            session_id=session_id,
+            sdk_session=self._sdk_session(session_id),
+        )
         self._sessions[session_id] = state
+        self.save(state)
         return state
 
     def get_or_create(self, session_id: str | None = None) -> SessionState:
-        if session_id and session_id in self._sessions:
-            return self._sessions[session_id]
+        if session_id:
+            state = self.get(session_id)
+            if state:
+                return state
         return self.create()
 
     def get(self, session_id: str) -> SessionState | None:
-        return self._sessions.get(session_id)
+        if session_id in self._sessions:
+            return self._sessions[session_id]
+
+        with sqlite3.connect(self._db_path) as connection:
+            row = connection.execute(
+                "SELECT state_json FROM job_ai_session_state WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()
+
+        if not row:
+            return None
+
+        data = json.loads(row[0])
+        state = SessionState(
+            session_id=session_id,
+            sdk_session=self._sdk_session(session_id),
+            resume_profile=self._restore_model(ResumeProfile, data.get("resume_profile")),
+            job_profile=self._restore_model(JobProfile, data.get("job_profile")),
+            deterministic_score=self._restore_model(
+                DeterministicScore, data.get("deterministic_score")
+            ),
+            fit_analysis=self._restore_model(FitAnalysis, data.get("fit_analysis")),
+            report=self._restore_model(FinalReport, data.get("report")),
+            history=data.get("history", []),
+        )
+        self._sessions[session_id] = state
+        return state
+
+    def save(self, state: SessionState) -> None:
+        data = {
+            "resume_profile": self._dump_model(state.resume_profile),
+            "job_profile": self._dump_model(state.job_profile),
+            "deterministic_score": self._dump_model(state.deterministic_score),
+            "fit_analysis": self._dump_model(state.fit_analysis),
+            "report": self._dump_model(state.report),
+            "history": state.history,
+        }
+        with sqlite3.connect(self._db_path) as connection:
+            connection.execute(
+                """
+                INSERT INTO job_ai_session_state (session_id, state_json)
+                VALUES (?, ?)
+                ON CONFLICT(session_id) DO UPDATE SET state_json = excluded.state_json
+                """,
+                (state.session_id, json.dumps(data)),
+            )
+
+    @staticmethod
+    def _dump_model(value: object | None) -> dict | None:
+        return value.model_dump() if hasattr(value, "model_dump") else None
+
+    @staticmethod
+    def _restore_model(model_class, value: dict | None):
+        return model_class.model_validate(value) if value is not None else None
 
 
-session_store = SessionStore()
+SESSION_DB_PATH = Path(
+    os.getenv("JOB_AI_SESSION_DB", Path(__file__).resolve().parent.parent / "job_ai_sessions.db")
+)
+session_store = SessionStore(SESSION_DB_PATH)
 
 
 def to_json(value: object) -> str:
@@ -256,6 +347,7 @@ async def analyze_job_fit(
     state.fit_analysis = fit_analysis
     state.report = report
     state.history.append({"role": "system", "content": "Completed job fit analysis."})
+    session_store.save(state)
 
     return AnalyzeResponse(
         session_id=state.session_id,
@@ -282,12 +374,14 @@ async def answer_follow_up(session_id: str, message: str) -> ChatResponse:
         f"User question: {message}"
     )
 
-    result = await Runner.run(
-        follow_up_agent,
-        context,
-        session=state.sdk_session,
-    )
+    with trace("Job AI follow-up"):
+        result = await Runner.run(
+            follow_up_agent,
+            context,
+            session=state.sdk_session,
+        )
     answer = str(result.final_output)
     state.history.append({"role": "user", "content": message})
     state.history.append({"role": "assistant", "content": answer})
+    session_store.save(state)
     return ChatResponse(session_id=session_id, answer=answer)
