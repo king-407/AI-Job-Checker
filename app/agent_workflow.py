@@ -85,6 +85,10 @@ resume_parser_agent = Agent(
     instructions=(
         "Extract the candidate profile from the resume text. "
         "Be factual. Do not invent skills, projects, companies, or degrees. "
+        "For projects, preserve the project name and every technical implementation detail, "
+        "including architecture patterns, reliability mechanisms, technologies, and outcomes; "
+        "do not reduce a project to only its title. Put open-source work in "
+        "open_source_contributions and preserve the project name, contribution, and PR details. "
         "For years_of_experience, estimate total professional experience in years from explicit "
         "work dates or a direct total-experience statement in the resume. Include internships "
         "only when they are professional software, engineering, data, AI, or technical roles. "
@@ -150,6 +154,11 @@ follow_up_agent = Agent(
     instructions=(
         "Answer follow-up questions using the current session's resume, job description, score, "
         "and report context. Be specific and practical. Format every answer as readable Markdown. "
+        "Explain this application's actual deterministic score, not assumptions about generic ATS "
+        "systems. The scorer checks all parsed skills, tools, project details, open-source "
+        "contributions, work-experience bullets, and achievements. Never claim that project "
+        "evidence is ignored. Clearly distinguish facts present in the supplied context from "
+        "inferences, and say when evidence is absent. "
         "Put headings on their own lines with a blank line before and after them. Put each bullet "
         "or numbered-list item on its own line. Never return the whole answer as one continuous "
         "paragraph."

@@ -12,6 +12,24 @@ def normalize_term(value: str) -> str:
     return value.strip()
 
 
+def normalized_tokens(value: str) -> set[str]:
+    tokens = normalize_term(value).split()
+    ignored = {
+        "and", "or", "the", "with", "using", "of", "to",
+        "experience", "familiarity", "knowledge", "mechanism", "mechanisms",
+    }
+    normalized: set[str] = set()
+    for token in tokens:
+        if token in ignored:
+            continue
+        if token.endswith("ies") and len(token) > 4:
+            token = f"{token[:-3]}y"
+        elif token.endswith("s") and len(token) > 3:
+            token = token[:-1]
+        normalized.add(token)
+    return normalized
+
+
 def match_terms(source_terms: list[str], target_terms: list[str]) -> tuple[list[str], list[str]]:
     normalized_source = {normalize_term(term) for term in source_terms if normalize_term(term)}
     matched: list[str] = []
@@ -22,12 +40,29 @@ def match_terms(source_terms: list[str], target_terms: list[str]) -> tuple[list[
         if not normalized_target:
             continue
 
-        found = any(
-            normalized_target == source
-            or normalized_target in source
-            or source in normalized_target
-            for source in normalized_source
-        )
+        target_tokens = normalized_tokens(target)
+        found = False
+        for source in normalized_source:
+            if (
+                normalized_target == source
+                or normalized_target in source
+                or source in normalized_target
+            ):
+                found = True
+                break
+
+            source_tokens = normalized_tokens(source)
+            overlap = target_tokens & source_tokens
+            if target_tokens and (
+                len(overlap) / len(target_tokens) >= 0.66
+                or (
+                    len(target_tokens) == 1
+                    and len(next(iter(target_tokens))) >= 5
+                    and target_tokens <= source_tokens
+                )
+            ):
+                found = True
+                break
 
         if found:
             matched.append(target)
@@ -44,7 +79,14 @@ def ratio_score(matched_count: int, total_count: int, weight: float) -> float:
 
 
 def calculate_fit_score(resume: ResumeProfile, job: JobProfile) -> DeterministicScore:
-    resume_terms = resume.skills + resume.tools + resume.projects + resume.work_experience + resume.achievements
+    resume_terms = (
+        resume.skills
+        + resume.tools
+        + resume.projects
+        + resume.open_source_contributions
+        + resume.work_experience
+        + resume.achievements
+    )
 
     matched_required, missing_required = match_terms(resume_terms, job.required_skills)
     matched_preferred, missing_preferred = match_terms(resume_terms, job.preferred_skills)

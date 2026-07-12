@@ -11,7 +11,14 @@ class ResumeProfile(BaseModel):
     years_of_experience: float | None = Field(default=None, description="Estimated total years of experience")
     skills: list[str] = Field(default_factory=list, description="Technical and professional skills")
     tools: list[str] = Field(default_factory=list, description="Tools, libraries, frameworks, platforms")
-    projects: list[str] = Field(default_factory=list, description="Notable projects")
+    projects: list[str] = Field(
+        default_factory=list,
+        description="Project names and detailed technical implementation bullets",
+    )
+    open_source_contributions: list[str] = Field(
+        default_factory=list,
+        description="Open-source projects, pull requests, fixes, tests, and contribution details",
+    )
     work_experience: list[str] = Field(default_factory=list, description="Relevant work experience bullets")
     education: list[str] = Field(default_factory=list, description="Education details")
     achievements: list[str] = Field(default_factory=list, description="Achievements, awards, measurable impact")
